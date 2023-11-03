@@ -1,0 +1,9 @@
+data_path    : "/develop/data/kube_dataset/preprocessed_samples"
+
+len_pix_full : 
+len_pix_crop :  
+len_crop     : 
+len_full     : 2.04 
+
+X_grid       :
+Y_grid       :

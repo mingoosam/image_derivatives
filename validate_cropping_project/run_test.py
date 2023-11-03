@@ -1,17 +1,13 @@
 import matplotlib.pyplot as plt
+import pickle
+import yaml
 from matplotlib.ticker import FuncFormatter
 import numpy as np
 import matplotlib.patches as patches
 from IPython import embed
 import interpolate
-import image_gradients as im
 import curvature
-
-len_pix_full = 166 
-#len_pix_crop = int(len_pix_full / 3)
-len_pix_crop = 140
-len_crop = 680.e-9
-len_full = 680.e-9 * 3
+import os
 
 def plot_mse(mse_lists, pixel_vals, title):
     
@@ -71,15 +67,16 @@ def format_curv(curv):
 
     return format_curv
 
-def make_plots(X_full, Y_full, Z_full, X_cropped, Y_cropped, Z_cropped, full_der, crop_der, full_curv, crop_curv, title=None):
+#def make_plots(X_full, Y_full, Z_full, X_cropped, Y_cropped, Z_cropped, full_der, crop_der, full_curv, crop_curv, title=None):
+def make_plots(params, image, cropped, full_der, crop_der, full_curv, crop_curv, title):
 
     fig, ax = plt.subplots(1,2, figsize=(8,8))
     plt.suptitle(title)
 
-    vmin=Z_full.min()
-    vmax=Z_full.max()
+    vmin= image.min()
+    vmax= image.max()
      
-    im = ax[0].pcolormesh(X_full, Y_full, Z_full, vmin=vmin, vmax=vmax)
+    im = ax[0].pcolormesh(X_full, Y_full, image, vmin=vmin, vmax=vmax)
     ax[0].set_xticks(np.linspace(X_full.min(), X_full.max(), 5))
     ax[0].set_yticks(np.linspace(Y_full.min(), Y_full.max(), 5))
     ax[0].set_xlim([X_full.min(), X_full.max()])
@@ -156,7 +153,6 @@ def make_plots(X_full, Y_full, Z_full, X_cropped, Y_cropped, Z_cropped, full_der
 #      [0, 0, 0]   has fx = 0 and fy = 1      [0, 1, 2]    has fx = 1 and fy = 0
 
 
-# eventually we'll write another method that grabs an average of the x rows, etc.
 def get_center(arr):
     if len(arr.shape) == 2: 
         rows, cols = arr.shape
@@ -183,11 +179,11 @@ def get_avg(arr):
     return np.average(arr)
     
 def derivatives(grid, center):
-
-    #grid_flip = np.flip(grid,axis=0) # flip row if NOT using meshgrid
-    grid_flip = grid # this is for meshgrid
-    fy, fx = np.gradient(grid_flip)
-    #fy, fx = np.gradient(grid)
+    embed()
+    grid_flip = np.flip(grid,axis=0) # flip row if NOT using meshgrid
+    #grid_flip = grid # this is for meshgrid
+    #fy, fx = np.gradient(grid_flip)
+    fy, fx = np.gradient(grid)
 
     fxx = np.diff(grid_flip[1,:], 2)
     fyy = np.diff(grid_flip[:,1], 2) 
@@ -195,8 +191,6 @@ def derivatives(grid, center):
     fxy = np.gradient(np.gradient(grid,axis=0),axis=1)
    
     if center == True: 
-        # this only works if the grid is 3x3.
-        #a = np.array( (fx[1,1], fy[1,1], fxx[0], fyy[0], fxy[1,1]) )
         
         fx = get_center(fx)
         fy = get_center(fy)
@@ -219,29 +213,27 @@ def derivatives(grid, center):
                    'fxy': fxy,
                   }
     
-    #return  [cen_fx, cen_fy, cen_fxx, cen_fyy, cen_fxy]
     return derivatives
 
-def get_cropped_im(X_full, Y_full, Z_full, len_pix_crop):
+def get_cropped_im(params, image):
 
-    start_row = (X_full.shape[0] - len_pix_crop) // 2
-    end_row = start_row + len_pix_crop
+    start_row = (params['X_grid'].shape[0] - params['len_pix_full']) // 2
+    end_row = start_row + params['len_pix_crop']
     
-    start_col = (X_full.shape[0] - len_pix_crop) // 2
-    end_col = start_col + len_pix_crop
+    start_col = (params['X_grid'].shape[0] - params['len_pix_full']) // 2
+    end_col = start_col + params['len_pix_crop']
+  
+    cropped = image[start_row:end_row, start_col:end_col]
     
-    X_cropped = X_full[start_row:end_row, start_col:end_col]
-    Y_cropped = Y_full[start_row:end_row, start_col:end_col]
-    Z_cropped = Z_full[start_row:end_row, start_col:end_col]
-    
-    return X_cropped, Y_cropped, Z_cropped
+    return cropped
 
-def test_images(X_full, Y_full, Z_full, title=None):
+#def test_images(X_full, Y_full, Z_full, title=None):
+def test_images(params, image, title=None):
     
-    X_cropped, Y_cropped, Z_cropped = get_cropped_im(X_full, Y_full, Z_full, len_pix_crop)
+    cropped = get_cropped_im(params, image)
 
-    full_der = derivatives(Z_full,center=False) 
-    crop_der = derivatives(Z_cropped,center=False) 
+    full_der = derivatives(image, center=False) # if we set center=True, we'll get the center pixel rather than an average of all the pixels. They are really pretty similar, at least for the toy problems. 
+    crop_der = derivatives(cropped, center=False) 
 
     rot_mat_linear = curvature.rot_mat_linear(full_der)
     mag_grad = curvature.mag_grad(full_der)
@@ -270,17 +262,59 @@ def test_images(X_full, Y_full, Z_full, title=None):
                 }
 
     title = title
-    #make_plots(X_full, Y_full, Z_full, X_cropped, Y_cropped, Z_cropped, full_der, crop_der, full_curv, crop_curv, title)
+    make_plots(image, cropped, full_der, crop_der, full_curv, crop_curv, title)
     
     mse_fx = MSE(full_der['fx'], crop_der['fx'])
     mse_fy = MSE(full_der['fy'], crop_der['fy'])
     mse_fxx = MSE(full_der['fxx'], crop_der['fxx'])
     mse_fyy = MSE(full_der['fyy'], crop_der['fyy'])
     mse_fxy = MSE(full_der['fxy'], crop_der['fxy'])
+
     return [mse_fx, mse_fy, mse_fxx, mse_fyy, mse_fxy] 
 
+def get_images(params, idx):
+
+    sample = os.path.join(params['data_path'], files[idx])
+    sample = pickle.load(open(sample,"rb"))
+
+    images = sample['all_near_fields']['near_fields_1550'].squeeze()
+    y_images = images[1]
+
+    y_magnitude = y_images[0]
+    y_phase = y_images[1]     
+
+    return y_magnitude, y_phase
+
+def update_len_crop():
+    pass
+
 if __name__=="__main__":
+
+    # idx just lets us grab a single sample (.pkl file) from our data subset
+    idx = 0
+    params = yaml.load(open("config.yaml"), Loader=yaml.FullLoader)
+
+    # get access to the data subset
+    files = os.listdir(params['data_path'])
+    files = [file for file in files if os.path.isfile(os.path.join(params['data_path'], file))] 
     
+    # grab the sample
+    mag, phase = get_images(params, idx)
+
+    # get number of pixels directly from the image - we're choosing the crop value here - we could do this smarter maybe
+    params['len_pix_full'] = mag.shape[0] 
+    params['len_pix_crop'] = mag.shape[0] - 10
+    
+    # get the grid coordinates for the plot based on the actual micron length of our image and the number of pixels. 
+    x_full = np.linspace(-params['len_full']/2, params['len_full']/2, params['len_pix_full'])
+    y_full = np.linspace(-params['len_full']/2, params['len_full']/2, params['len_pix_full'])
+    
+    params['X_grid'], params['Y_grid'] = np.meshgrid(x_full, y_full)
+    
+    test_images(params, mag) 
+    embed()
+    
+""" 
     x_full = np.linspace(-len_full/2, len_full/2, len_pix_full)
     y_full = np.linspace(-len_full/2, len_full/2, len_pix_full)
     
@@ -317,6 +351,7 @@ if __name__=="__main__":
         mse_list = test_images(X_full, Y_full, Z_full)
         mse_lists.append(mse_list)
         pixel_vals.append(len_pix_crop)
+
 
     plot_mse(mse_lists, pixel_vals, "mag_increasing_diag_upright")
 
@@ -368,4 +403,4 @@ if __name__=="__main__":
         pixel_vals.append(len_pix_crop)
 
     plot_mse(mse_lists, pixel_vals, "saddle")
-
+"""
