@@ -1,9 +1,28 @@
-data_path    : "/develop/data/kube_dataset/preprocessed_samples"
+#data_path    : "/develop/data/kube_dataset/preprocessed_samples"
+data_path    : "/Users/andyvarner/Documents/data/kube_dataset/preprocessed_samples"
 
-len_pix_full : 
-len_pix_crop :  
-len_crop     : 
-len_full     : 2.04 
+#len_pix_full :  # changed this to `full_pix`
+#len_pix_crop :  # changed this to `crop_size`
+#len_full     : 2.04 # changed this to `full_size`
+#len_crop     : # changed this to `crop_size`
 
-X_grid       :
-Y_grid       :
+crop_offset : 111
+
+full_size : 2.04
+full_pix  :
+
+crop_size :
+crop_pix  :
+
+X_grid    :
+Y_grid    :
+
+X_grid_crop :
+Y_grid_crop : 
+
+#for getting cropped image dimensions
+start_row :
+end_row :
+
+start_col :
+end_col :
