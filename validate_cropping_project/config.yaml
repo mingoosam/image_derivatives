@@ -1,19 +1,19 @@
-#data_path    : "/develop/data/kube_dataset/preprocessed_samples"
-data_path    : "/Users/andyvarner/Documents/data/kube_dataset/preprocessed_samples"
+data_path    : "/home/mindful/Documents/data/kube_dataset/preprocessed_samples"
+buffer_path  : "/home/mindful/Documents/data/buffer_studies/slices"
+#data_path    : "/Users/andyvarner/Documents/data/kube_dataset/preprocessed_samples"
 
-#len_pix_full :  # changed this to `full_pix`
-#len_pix_crop :  # changed this to `crop_size`
-#len_full     : 2.04 # changed this to `full_size`
-#len_crop     : # changed this to `crop_size`
+# choice=0 to return value of center pixel, choice=1 to return average
+choice : 1
 
-crop_offset : 111
-
+# size of the simulation cell in microns
 full_size : 2.04
-full_pix  :
-
 crop_size :
+
+# integer value number of pixels per image
+full_pix  :
 crop_pix  :
 
+# an np.meshgrid object, used to plot images on a plt.pcolormesh plot
 X_grid    :
 Y_grid    :
 
