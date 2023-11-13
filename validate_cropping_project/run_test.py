@@ -187,7 +187,7 @@ def MSE(full_der, crop_der):
     return np.square(np.subtract(full_der, crop_der)).mean()
 
 def derivatives(grid, params):
-
+    
     #grid_flip = np.flip(grid,axis=0) # flip row if NOT using meshgrid
     #grid_flip = grid # this is for meshgrid
     #fy, fx = np.gradient(grid_flip)
@@ -216,6 +216,7 @@ def derivatives(grid, params):
                    'fxy': fxy,
                   }
     return derivatives
+
 
 def get_cropped_im(params, image):
 
@@ -441,20 +442,37 @@ def phase_min_max(params, files):
         phase_mins.append(phase_list.min())
         phase_maxes.append(phase_list.max())
 
-    embed()
+
+def der_from_radii(params, radii):
+    
+    phases = np.asarray(interpolate.radii_to_phase(radii))
+    phases = phases.reshape((3,3))
+    der = derivatives(phases, params)
+    
+    curv = {'rot_mat_linear'      : curvature.rot_mat_linear(der),
+                 'mag_grad'       : curvature.mag_grad(der),
+                 'rot_mat_quad'   : curvature.rot_mat_quad(der),
+                 'fpp'            : curvature.fpp(der),
+                 'fqq'            : curvature.fqq(der),
+                }
+
+    return der, curv
 
 def buffer_study(params):
 
-    metadata_filename = os.path.join(params['buffer_path'], "gaussian_metadata_with_buffer_5.000.pkl")
-    x, y, z, w = pickle.load(open(metadata_filename, "rb"))
+    #metadata_filename = os.path.join(params['buffer_path'], "gaussian_metadata_with_buffer_5.000.pkl")
+    #x, y, z, w = pickle.load(open(metadata_filename, "rb"))
     #fig, ax = plt.subplots(figsize=(5,5))
     #ax.pcolormesh(x, y, cropped, cmap="hsv")
-
+    
     #sample = os.path.join(params['data_path'], "000000.pkl")
     #sample = pickle.load(open(sample, "rb"))
     #phases = sample['phases'].flatten()
 
-    phase_im = pickle.load(open(os.path.join(params['buffer_path'],"z_slice_gaussian_with_buffer_5.pkl"),"rb"))
+    #folder = "uniform_min_rad"
+    folder = "inc_with_y"
+
+    phase_im = pickle.load(open(os.path.join(params['buffer_path'],folder,"eps_slice.pkl"),"rb"))
     phase_im = np.angle(phase_im)
     params['full_pix'] = phase_im.shape[0]
     params['crop_pix'] = 166
@@ -470,13 +488,19 @@ def buffer_study(params):
     cropped = get_cropped_im(params, phase_im) 
 
     # get analytical derivatives
-    an_der, an_curv = get_curv(phase_im, cropped, idx=None, choice=1, buffer=True) 
 
+    # this works if we have a data sample we can grab from. not for toy probs
+    #an_der, an_curv = get_curv(phase_im, cropped, idx=None, choice=1, buffer=True) 
+    radii = [0.075 for _ in range(9)]
+    an_der, an_curv = der_from_radii(params, radii) 
+ 
+    #embed()
     # get image derivatives
     im_der, im_curv = get_curv(phase_im, cropped, idx=None, choice=2, buffer=True)
     # get MSE
-    embed()
 
+    embed()
+    
 if __name__=="__main__":
 
     params = yaml.load(open("config.yaml"), Loader=yaml.FullLoader)
